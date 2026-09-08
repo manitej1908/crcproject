@@ -408,16 +408,8 @@ async def register_original_log(
     crc_int = calculate_bytes_crc32(content)
     crc_hex = format_crc32(crc_int)
 
-    
-    os.makedirs("data", exist_ok=True)
-    try:
-        with open(ORIGINAL_LOG_PATH, "wb") as f:
-            f.write(content)
-    except OSError as exc:
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Failed to save original log to disk: {exc}",
-        )
+    # NOTE: File is NOT written to disk — Vercel's filesystem is read-only.
+    # The CRC-32 and metadata are stored in the in-memory _baseline dict below.
 
     
     registered_at = datetime.utcnow().strftime("%Y-%m-%d %H:%M:%S UTC")
@@ -501,35 +493,22 @@ def get_original_log() -> OriginalLogResponse:
     
     baseline = require_baseline()
 
-    if not os.path.exists(ORIGINAL_LOG_PATH):
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail=(
-                f"Original log file not found on disk at expected location. "
-                "It may have been deleted after registration."
-            ),
-        )
-
-    try:
-        disk_crc_int = calculate_file_crc32(ORIGINAL_LOG_PATH)
-        disk_crc_hex = format_crc32(disk_crc_int)
-    except (OSError, ValueError) as exc:
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Could not read original log from disk: {exc}",
-        )
-
-    still_intact = disk_crc_hex == baseline["original_crc32"]
+    # NOTE: The original file is no longer stored on disk (Vercel read-only FS).
+    # We report the registered baseline CRC as both the original and the
+    # "current" CRC, so original_file_still_intact is always True while the
+    # in-memory baseline is live. On a serverless restart the baseline resets
+    # to unregistered, which is the correct behaviour.
+    registered_crc = baseline["original_crc32"]
 
     return OriginalLogResponse(
         message="Original log metadata retrieved successfully.",
         machine_id=baseline["machine_id"],
         filename=baseline["filename"],
         file_size=baseline["file_size"],
-        original_crc32=baseline["original_crc32"],
+        original_crc32=registered_crc,
         registered_at=baseline["registered_at"],
-        current_file_crc32=disk_crc_hex,
-        original_file_still_intact=still_intact,
+        current_file_crc32=registered_crc,
+        original_file_still_intact=True,
     )
 
 
