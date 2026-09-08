@@ -1,0 +1,196 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Machine Log Integrity Checker</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <header class="topbar">
+        <div>
+            <h1>Machine Log Integrity Checker</h1>
+            <p>Industrial CSV integrity verification using CRC-32</p>
+        </div>
+        <div id="backendIndicator" class="status-pill offline">
+            <span class="dot"></span>
+            <span id="backendText">Checking backend...</span>
+        </div>
+    </header>
+
+    <main class="container">
+        <section class="hero">
+            <div>
+                <span class="eyebrow">INDUSTRIAL DATA INTEGRITY</span>
+                <h2>Verify machine logs with byte-level CRC-32 checks.</h2>
+                <p>
+                    Register a trusted machine log, calculate checksums, and detect
+                    modifications or corruption in subsequent files.
+                </p>
+            </div>
+            <div class="hero-crc">
+                <span>CRC-32</span>
+                <strong id="heroCrc">--------</strong>
+            </div>
+        </section>
+
+        <div id="globalMessage" class="message hidden"></div>
+
+        <section class="grid">
+            <!-- Calculate -->
+            <article class="card">
+                <div class="card-heading">
+                    <div class="icon blue">#</div>
+                    <div>
+                        <h3>Calculate CRC-32</h3>
+                        <p>Calculate the checksum of any valid machine log.</p>
+                    </div>
+                </div>
+
+                <label class="upload-box" for="calculateFile">
+                    <span class="upload-symbol">↑</span>
+                    <span>
+                        <strong id="calculateFileName">Choose CSV file</strong>
+                        <small>CSV files only</small>
+                    </span>
+                </label>
+                <input id="calculateFile" type="file" accept=".csv,text/csv" hidden>
+
+                <button id="calculateBtn" class="btn blue-btn">Calculate CRC-32</button>
+
+                <div id="calculateResult" class="result hidden">
+                    <span>CRC-32</span>
+                    <strong id="calculatedCrc">--------</strong>
+                    <small id="calculatedMeta"></small>
+                </div>
+            </article>
+
+            <!-- Register -->
+            <article class="card">
+                <div class="card-heading">
+                    <div class="icon green">+</div>
+                    <div>
+                        <h3>Register Original Log</h3>
+                        <p>Create the trusted baseline for verification.</p>
+                    </div>
+                </div>
+
+                <label class="upload-box" for="registerFile">
+                    <span class="upload-symbol">↑</span>
+                    <span>
+                        <strong id="registerFileName">Choose CSV file</strong>
+                        <small>Original machine log</small>
+                    </span>
+                </label>
+                <input id="registerFile" type="file" accept=".csv,text/csv" hidden>
+
+                <label class="field-label" for="machineId">Machine ID</label>
+                <input id="machineId" class="text-input" type="text"
+                       placeholder="e.g. MACHINE-001">
+
+                <button id="registerBtn" class="btn green-btn">Register Original Log</button>
+            </article>
+
+            <!-- Verify -->
+            <article class="card">
+                <div class="card-heading">
+                    <div class="icon purple">✓</div>
+                    <div>
+                        <h3>Verify Log Integrity</h3>
+                        <p>Compare a current log against the trusted baseline.</p>
+                    </div>
+                </div>
+
+                <label class="upload-box" for="verifyFile">
+                    <span class="upload-symbol">↑</span>
+                    <span>
+                        <strong id="verifyFileName">Choose CSV file</strong>
+                        <small>Current machine log</small>
+                    </span>
+                </label>
+                <input id="verifyFile" type="file" accept=".csv,text/csv" hidden>
+
+                <button id="verifyBtn" class="btn purple-btn">Verify Log Integrity</button>
+
+                <div id="verifyResult" class="result hidden">
+                    <div class="verify-status" id="verifyStatus">WAITING</div>
+                    <div class="crc-row">
+                        <span>Original CRC</span><strong id="originalCrc">--------</strong>
+                    </div>
+                    <div class="crc-row">
+                        <span>Current CRC</span><strong id="currentCrc">--------</strong>
+                    </div>
+                    <p id="verifyMessage"></p>
+                </div>
+            </article>
+
+            <!-- Status -->
+            <article class="card">
+                <div class="card-heading">
+                    <div class="icon cyan">i</div>
+                    <div>
+                        <h3>Registration Status</h3>
+                        <p>View the current trusted baseline information.</p>
+                    </div>
+                </div>
+
+                <div class="info-box">
+                    <div><span>Registered</span><strong id="statusRegistered">—</strong></div>
+                    <div><span>Machine ID</span><strong id="statusMachine">—</strong></div>
+                    <div><span>Filename</span><strong id="statusFilename">—</strong></div>
+                    <div><span>File Size</span><strong id="statusSize">—</strong></div>
+                    <div><span>Original CRC-32</span><strong id="statusCrc">—</strong></div>
+                    <div><span>Registered At</span><strong id="statusTime">—</strong></div>
+                </div>
+
+                <button id="statusBtn" class="btn cyan-btn">Refresh Status</button>
+            </article>
+
+            <!-- Original check -->
+            <article class="card">
+                <div class="card-heading">
+                    <div class="icon orange">▣</div>
+                    <div>
+                        <h3>Original Log Check</h3>
+                        <p>Confirm the stored original file is still intact.</p>
+                    </div>
+                </div>
+
+                <div id="originalResult" class="original-box">
+                    <div class="original-placeholder">No check performed yet.</div>
+                </div>
+
+                <button id="originalBtn" class="btn orange-btn">Check Original Log</button>
+            </article>
+
+            <!-- Health -->
+            <article class="card">
+                <div class="card-heading">
+                    <div class="icon green">♥</div>
+                    <div>
+                        <h3>System Health</h3>
+                        <p>Check whether the FastAPI service is reachable.</p>
+                    </div>
+                </div>
+
+                <div id="healthBox" class="health-box offline-box">
+                    <span class="large-dot"></span>
+                    <div>
+                        <strong id="healthStatus">Checking...</strong>
+                        <small>http://127.0.0.1:8000</small>
+                    </div>
+                </div>
+
+                <button id="healthBtn" class="btn green-btn">Check Backend Health</button>
+            </article>
+        </section>
+    </main>
+
+    <footer>
+        <span>Industrial Machine Log Integrity Checker</span>
+        <span>FastAPI • CRC-32 • Version 1.0.0</span>
+    </footer>
+
+    <script src="script.js"></script>
+</body>
+</html>
